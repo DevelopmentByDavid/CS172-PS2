@@ -10,9 +10,9 @@ import json
 import pprint
 from operator import itemgetter, attrgetter, methodcaller
 
-DEFAULT_DATA_DIR = "../data/ps1_data"
-OUTPUT_WITH_DOCID_FILE = "../output/output-with-id.txt"
-OUTPUT_SPEC_FILE = "../output/output-spec.txt"
+DEFAULT_DATA_DIR = os.path.join(os.path.dirname(__file__), "../data/ps1_data")
+OUTPUT_WITH_DOCID_FILE = os.path.join(os.path.dirname(__file__), "../output/output-with-id.txt")
+OUTPUT_SPEC_FILE = os.path.join(os.path.dirname(__file__), "../output/output-spec.txt")
 
 class Test:
     def __init__(self, toSearch):

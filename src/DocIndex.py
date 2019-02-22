@@ -7,16 +7,17 @@ import math
 import re
 import json
 from operator import itemgetter, attrgetter, methodcaller
+from nltk.stem import PorterStemmer
 
 ### GLOBALS
 #inputs i.e. r 
-STOP_FILE_PATH = "../stoplist.txt"
+STOP_FILE_PATH = os.path.join(os.path.dirname(__file__), "../stoplist.txt")
 #outputs i.e. w
-STATS_FILE_PATH = "../output/stats.txt"
-POSTINDEX_FILE_PATH = "../output/posting-index.txt"
-POSTINDEX_BACKUP_PATH = "../output/posting-index-backup.txt"
-DOCUMENT_FILE_PATH = "../output/document-index.txt"
-DOCUMENT_BACKUP_PATH = "../output/document-index-backup.txt"
+STATS_FILE_PATH = os.path.join(os.path.dirname(__file__), "../output/stats.txt")
+POSTINDEX_FILE_PATH = os.path.join(os.path.dirname(__file__), "../output/posting-index.txt")
+POSTINDEX_BACKUP_PATH = os.path.join(os.path.dirname(__file__), "../output/posting-index-backup.txt")
+DOCUMENT_FILE_PATH = os.path.join(os.path.dirname(__file__), "../output/document-index.txt")
+DOCUMENT_BACKUP_PATH = os.path.join(os.path.dirname(__file__), "../output/document-index-backup.txt")
 
 #CLI
 parser = argparse.ArgumentParser(description="Creates a posting index and document index from files specified")
@@ -66,12 +67,11 @@ class DocIndex:
 
     @staticmethod
     def notFound(name, path):
-        pass
         # Error messages`
-        # if not os.path.exists(path):
-            #print("ERROR: Looked for \'", path, "\' and did not find it.")
-        # if not os.paths.isfile(path):
-            #print("ERROR:", name ," file path \'", path, "\' is not a file.")
+        if not os.path.exists(path):
+            print("ERROR: Looked for \'", path, "\' and did not find it.")
+        if not os.path.isfile(path):
+            print("ERROR:", name ," file path \'", path, "\' is not a file.")
 
     @staticmethod
     def countTokens(token, tokens):
@@ -87,7 +87,6 @@ class DocIndex:
             self.stopSet = f.readlines()
             temp = set()
             for n in self.stopSet:
-
                 temp.add(re.sub(r"\s+", "", self.strip(n)))
             f.close()
             self.stopSet = temp
@@ -163,7 +162,8 @@ class DocIndex:
         n = strippedText[0] #TODO: change this probably
         split = n.split(" ")
         stoppedTokens = self.removeStopWords(split)
-        return stoppedTokens
+        stemmedTokens = self.applyStemming(stoppedTokens)
+        return stemmedTokens
     
     def addToDocIndex(self, docId, value):
         self.docIndex[docId] = {"_id": docId, "terms": value}
@@ -248,7 +248,14 @@ class DocIndex:
 
     def getDocIndexSize(self):
         return len(self.docIndex)
-                    
+
+    def applyStemming(self, tokens):
+        ps = PorterStemmer()
+        retText = []
+        for token in tokens:
+            retText.append(ps.stem(token))
+        # print(retText)
+        return retText
 
 def main(args):
     args = parser.parse_args(args)
