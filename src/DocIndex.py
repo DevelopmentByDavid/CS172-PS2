@@ -220,7 +220,6 @@ class DocIndex:
         print(token)
         if token in self.tag:
             print(token)
-        # print(token in self.TrecMap)
         if token in self.tag:
             print(token)
             self.TrecMap[token]
