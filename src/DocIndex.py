@@ -54,7 +54,7 @@ class DocIndex:
         self.inDoc = False
         self.inText = False
         self.inDocNo = False
-        self.tag = ["</DOC>", "<DOC>", "<TEXT>", "</TEXT>", "<DOCNO>", "</DOCNO>"]
+        self.tag = ["</doc>", "<doc>", "<text>", "</text>", "<docno>", "</docno>"]
         self.TREC = False
         self.TrecDocNo = None
         self.TrecText = []
@@ -66,13 +66,22 @@ class DocIndex:
         self.loadStopList()
         self.loadPostingIndex()
         self.loadDocIndex()
+    
+    def stripTrec(self, word):
+        if word.lower() in self.tag:
+            self.TrecMap[word.lower()][0](self.TrecMap[word.lower()][1])
+            return word.lower()
+
+        if not self.inDocNo:
+            return re.sub(r"\W+|(\s\s+)|(\A\Z)+|(\\0)", '', word.lower())       
+        elif self.inDocNo:
+            return word
+        else:
+            return re.sub(r"(\s\s+)|(\\0)", "", word.lower())
 
     def strip(self, word):
         if self.TREC:
-            if not word in self.tag:
-                return re.sub(r"\W+|(\s\s+)|(\A\Z)+|(\\0)", '', word)       
-            else:
-                return None
+            return self.stripTrec(word)
         else:
             return re.sub(r"\W+|(\s\s+)|(\A\Z)+|(\\0)", '', word)
 
@@ -183,6 +192,8 @@ class DocIndex:
     def addDocument(self, document):
         if not self.exists(document):
             return
+        if self.TREC:
+            self.TrecInit()
 
         strippedText = []
         f = open(document, 'r')
@@ -197,50 +208,44 @@ class DocIndex:
         stoppedTokens = self.tokenize(removeNone)
         docId = os.path.basename(document) #will update later if it's TREC
         if self.TREC:
-            print("in trec")
             self.parseTrec(stoppedTokens)
         else:
             self.addToDocIndex(docId, len(stoppedTokens))
             self.updatePostingIndex(stoppedTokens, docId)
 
     def parseTrec(self, stoppedTokens):
-        self.TrecInit()
-        print("init trec")
         for token in stoppedTokens:
             self.checkToken(token)
             self.parseToken(token)
     
     def parseToken(self, token):
+        # print(self.inDoc)
         if self.inDoc and self.inDocNo:
             self.TrecDocNo = token
-        if self.inDoc and self.inText:
+        elif self.inDoc and self.inText:
             self.TrecText.append(token)
     
     def checkToken(self, token):
-        print(token)
         if token in self.tag:
-            print(token)
-        if token in self.tag:
-            print(token)
-            self.TrecMap[token]
+            self.TrecMap[token][0](self.TrecMap[token][1])
+            # print(token)
 
-        if (not self.inDoc) and self.TrecText and self.TrecDocNo:
+        if (not self.inDoc) and self.TrecText != None and self.TrecDocNo != None:
             self.addToDocIndex(self.TrecDocNo, len(self.TrecText))
             self.updatePostingIndex(self.TrecText, self.TrecDocNo)
-            self.TrecText = None
+            self.TrecText = []
             self.TrecDocNo = None
 
     
     def TrecInit(self):
         self.TrecMap = {
-            "<DOC>": self.setInDoc(True),
-            "</DOC>": self.setInDoc(False),
-            "<TEXT>": self.setInText(True),
-            "</TEXT>": self.setInText(False),
-            "<DOCNO>": self.setInDocNo(True),
-            "</DOCNO>": self.setInDocNo(False)
+            "<doc>": [self.setInDoc, True],
+            "</doc>": [self.setInDoc, False],
+            "<text>": [self.setInText, True],
+            "</text>": [self.setInText, False],
+            "<docno>": [self.setInDocNo, True],
+            "</docno>": [self.setInDocNo, False]
         }
-
 
     def removeStopWords(self, strippedWords):
         retText = []
@@ -263,7 +268,6 @@ class DocIndex:
     def writeAll(self):
         self.writeDocIndex()
         self.writePostingIndex()
-        pass
     
     def writeDocIndex(self):
         #print("Writing to " + DOCUMENT_FILE_PATH)
