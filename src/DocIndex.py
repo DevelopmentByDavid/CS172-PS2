@@ -19,6 +19,8 @@ POSTINDEX_BACKUP_PATH = os.path.join(os.path.dirname(__file__), "../output/posti
 DOCUMENT_FILE_PATH = os.path.join(os.path.dirname(__file__), "../output/document-index.txt")
 DOCUMENT_BACKUP_PATH = os.path.join(os.path.dirname(__file__), "../output/document-index-backup.txt")
 
+
+
 #CLI
 parser = argparse.ArgumentParser(description="Creates a posting index and document index from files specified")
 parser.add_argument("-f", "--file", default = None,\
@@ -35,6 +37,9 @@ parser.add_argument("--clear", default = None,\
     help = "Clear index and inverted index. If used with --file and other commands, clear will occur first then generate the new index. Generates backup files on use.",\
     action = "store_true")
 parser.add_argument("--find", default = None, help = "Find term in inverted index")
+parser.add_argument("--trec", default = None, help = "Add a TREC file")
+
+
 
 
 #DocIndex class definition
@@ -45,6 +50,14 @@ class DocIndex:
         self.docIndex = None
         self.stopSet = None
         self.fileList = None
+        # TREC related stuff
+        self.inDoc = False
+        self.inText = False
+        self.inDocNo = False
+        self.tag = ["</DOC>", "<DOC>", "<TEXT>", "</TEXT>", "<DOCNO>", "</DOCNO>"]
+        self.TREC = False
+        self.TrecDocNo = None
+        self.TrecText = []
         # loads
         self.loadAll()
 
@@ -54,9 +67,41 @@ class DocIndex:
         self.loadPostingIndex()
         self.loadDocIndex()
 
+    def strip(self, word):
+        if self.TREC:
+            if not word in self.tag:
+                return re.sub(r"\W+|(\s\s+)|(\A\Z)+|(\\0)", '', word)       
+            else:
+                return None
+        else:
+            return re.sub(r"\W+|(\s\s+)|(\A\Z)+|(\\0)", '', word)
+
+    def setInDoc(self, val):
+        if val == self.inDoc:
+            print("ERROR: <DOC></DOC> tags are not in pairs")
+            print("Unbalanced Tag: ", val)
+        else:
+            self.inDoc = val
+
+    def setInDocNo(self, val):
+        if val == self.inDocNo:
+            print("ERROR: <DOCNO></DOCNO> tags are not in pairs")
+        else:
+            self.inDocNo = val
+
+    def setInText(self, val):
+        if val == self.inText:
+            print("ERROR: <TEXT></TEXT> tags are not in pairs")
+        else:
+            self.inText = val 
+
     @staticmethod
-    def strip(fileText):
-        return re.sub(r"\W+|(\s\s+)|(\A\Z)+|(\\0)", ' ', fileText)
+    def removeNone(text):
+        retVal = []
+        for word in text:
+            if word:
+                retVal.append(word)
+        return retVal
 
     @staticmethod
     def exists(toCheck):
@@ -143,25 +188,70 @@ class DocIndex:
         f = open(document, 'r')
         lines = f.readlines()
         for line in lines:
-            strippedText.append(self.strip(line))
+            for word in line.split():
+                retWord = self.strip(word)
+                if retWord:
+                    strippedText.append(retWord)
         f.close()
-        stoppedTokens = self.tokenize(strippedText)
-        docId = os.path.basename(document)
-        self.addToDocIndex(docId, len(stoppedTokens))
-        self.updatePostingIndex(stoppedTokens, docId)
-        
+        removeNone = self.removeNone(strippedText)
+        stoppedTokens = self.tokenize(removeNone)
+        docId = os.path.basename(document) #will update later if it's TREC
+        if self.TREC:
+            print("in trec")
+            self.parseTrec(stoppedTokens)
+        else:
+            self.addToDocIndex(docId, len(stoppedTokens))
+            self.updatePostingIndex(stoppedTokens, docId)
 
-    def removeStopWords(self, text):
+    def parseTrec(self, stoppedTokens):
+        self.TrecInit()
+        print("init trec")
+        for token in stoppedTokens:
+            self.checkToken(token)
+            self.parseToken(token)
+    
+    def parseToken(self, token):
+        if self.inDoc and self.inDocNo:
+            self.TrecDocNo = token
+        if self.inDoc and self.inText:
+            self.TrecText.append(token)
+    
+    def checkToken(self, token):
+        print(token)
+        if token in self.tag:
+            print(token)
+        # print(token in self.TrecMap)
+        if token in self.tag:
+            print(token)
+            self.TrecMap[token]
+
+        if (not self.inDoc) and self.TrecText and self.TrecDocNo:
+            self.addToDocIndex(self.TrecDocNo, len(self.TrecText))
+            self.updatePostingIndex(self.TrecText, self.TrecDocNo)
+            self.TrecText = None
+            self.TrecDocNo = None
+
+    
+    def TrecInit(self):
+        self.TrecMap = {
+            "<DOC>": self.setInDoc(True),
+            "</DOC>": self.setInDoc(False),
+            "<TEXT>": self.setInText(True),
+            "</TEXT>": self.setInText(False),
+            "<DOCNO>": self.setInDocNo(True),
+            "</DOCNO>": self.setInDocNo(False)
+        }
+
+
+    def removeStopWords(self, strippedWords):
         retText = []
-        for n in text:
+        for n in strippedWords:
             if not n.lower() in self.stopSet:
                 retText.append(n.lower())
         return retText
 
-    def tokenize(self, strippedText):
-        n = strippedText[0] #TODO: change this probably
-        split = n.split(" ")
-        stoppedTokens = self.removeStopWords(split)
+    def tokenize(self, strippedWords):
+        stoppedTokens = self.removeStopWords(strippedWords)
         stemmedTokens = self.applyStemming(stoppedTokens)
         return stemmedTokens
     
@@ -254,8 +344,10 @@ class DocIndex:
         retText = []
         for token in tokens:
             retText.append(ps.stem(token))
-        # print(retText)
         return retText
+
+    def setTrec(self, setTo):
+        self.TREC = setTo
 
 def main(args):
     args = parser.parse_args(args)
@@ -273,6 +365,11 @@ def main(args):
         pass
     if args.list != None:
         #print("TODO")
+        pass
+    if args.trec != None:
+        index.setTrec(True)
+        index.addDocument(args.trec)
+        index.write()
         pass
     if args.find != None:
         termInfo = index.findTerm(args.find)
