@@ -34,7 +34,9 @@ parser.add_argument("-s", "--stats", default = None,\
     action = "store_true")
 parser.add_argument("-l", "--list", default = None, help = "#print list of files used for index.", action = "store_true")
 parser.add_argument("--clear", default = None,\
-    help = "Clear index and inverted index. If used with --file and other commands, clear will occur first then generate the new index. Generates backup files on use.",\
+    help = "Clear index and inverted index.\
+    If used with --file and other commands,\
+    clear will occur first then generate the new index. Generates backup files on use.",\
     action = "store_true")
 parser.add_argument("--find", default = None, help = "Find term in inverted index")
 parser.add_argument("--trec", default = None, help = "Add a TREC file")
@@ -351,6 +353,11 @@ class DocIndex:
 
     def setTrec(self, setTo):
         self.TREC = setTo
+    
+    def search(self, queryString):
+        results = []
+        for word in queryString:
+            results.append(self.findTerm(word))
 
 def main(args):
     args = parser.parse_args(args)
