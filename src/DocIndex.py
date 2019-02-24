@@ -332,6 +332,8 @@ class DocIndex:
         f.close()
     
     def findTerm(self, termToFind):
+        ps = PorterStemmer()
+        termToFind = ps.stem(termToFind)
         if termToFind in self.postingIndex:
             return self.postingIndex[termToFind]
         return None
@@ -383,11 +385,12 @@ def main(args):
         pass
     if args.find != None:
         termInfo = index.findTerm(args.find)
-        if not termInfo == None:
+        if termInfo != None:
             relevantDocs = dict()
             for n in termInfo["postings"]:
                 relevantDocs[n] = index.findDoc(n)
             # print("Found!")
+            # print([termInfo, relevantDocs, index.getDocIndexSize()])
             return [termInfo, relevantDocs, index.getDocIndexSize()]
     return None
 
