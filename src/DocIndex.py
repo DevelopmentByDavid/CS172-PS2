@@ -223,14 +223,13 @@ class DocIndex:
     def parseToken(self, token):
         # print(self.inDoc)
         if self.inDoc and self.inDocNo:
-            self.TrecDocNo = token
+            self.TrecDocNo = token.upper()
         elif self.inDoc and self.inText:
             self.TrecText.append(token)
     
     def checkToken(self, token):
         if token in self.tag:
             self.TrecMap[token][0](self.TrecMap[token][1])
-            # print(token)
 
         if (not self.inDoc) and self.TrecText != None and self.TrecDocNo != None:
             self.addToDocIndex(self.TrecDocNo, len(self.TrecText))
@@ -391,7 +390,7 @@ def main(args):
                 relevantDocs[n] = index.findDoc(n)
             # print("Found!")
             # print([termInfo, relevantDocs, index.getDocIndexSize()])
-            return [termInfo, relevantDocs, index.getDocIndexSize()]
+            return {"termInfo": termInfo, "relevantDocs": relevantDocs, "docIndexSize": index.getDocIndexSize()}
     return None
 
 
