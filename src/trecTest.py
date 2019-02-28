@@ -17,25 +17,35 @@ DEFAULT_TREC_FILE = os.path.join(os.path.dirname(__file__), "../data/ap89_collec
 DEFAULT_QUERY_FILE = os.path.join(os.path.dirname(__file__), "../data/query_list.txt")
 DEFAULT_DEBUG_FILE = os.path.join(os.path.dirname(__file__), "../data/debug_list.txt")
 DEFAULT_DEBUG_OUPUT_FILE = os.path.join(os.path.dirname(__file__), "../output/debug.txt")
+RESULTS_FILE = os.path.join(os.path.dirname(__file__), "../output/results_file.txt")
+
 
 
 
 class TrecTest:
     def __init__(self):
         self.queries = self.loadQueryFile()
-        #will be a 2d array
-        # self.queryResultsByTerm = []
-        # self.queryResults = []
-        self.results = dict()
+        self.currentQuery = None
+        self.docResults = dict()
+        self.IDFStore = dict()
+        self.TFQuery = dict()
+    
+    def computeTFQuery(self, term):
+        if term in self.TFQuery:
+            self.TFQuery[term] += 1
+        else:
+            self.TFQuery[term] = 1
 
     def loadQueryFile(self):
         f = open(DEFAULT_DEBUG_FILE, "r")
         lines = f.readlines()
         f.close()
-        retVal = []
+        retVal = dict()
         for line in lines:
+            num = re.sub(r"\D\.", "", line)
+            num = re.sub(r"\D", "", num)
             temp = re.sub(r"\d*\W\W+", " ", line)
-            retVal.append(temp.split())
+            retVal[num] = temp.split()
         return retVal
 
     def loadTrecFile(self):
@@ -45,50 +55,61 @@ class TrecTest:
     def iterateQueries(self):
         # temp = []
         # print(self.queries)
-        for query in self.queries:
-            print(query)
+        for queryNum, query in self.queries.items():
+            print(queryNum)
+            self.currentQuery = queryNum
             for term in query:
                 result = DocIndex.main(["--find", term])
                 self.recordAndCompute(result, term)
+                self.computeTFQuery(term)
             self.rank(query)
             self.reset()
+
     
     def rank(self, query):
         querySize = len(query)
         rankedDocs = []
-        # print(json.dumps(self.results)
-        for doc, termDict in self.results.items():
-            # print(termDict)
+        # print(json.dumps(self.docResults)
+        for doc, termDict in self.docResults.items():
             # dot product computation
             dotProduct = 0
-            vec = []
-            for key, value in termDict.items():
-                dotProduct += value
-                vec.append(value)
+            docVec = []
+            TFIDFQuery = dict()
             
-            mag1 = numpy.sqrt(1 * querySize)
-            mag2 = self.magnitude(vec)
+            for key, value in self.TFQuery.items():
+                if key in self.IDFStore:
+                    TFIDFQuery[key] = (value/querySize) * self.IDFStore[key]
+
+            for key, value in termDict.items():
+
+                dotProduct = value * TFIDFQuery[key]
+                docVec.append(value)
+
+            mag1 = self.magnitude(list(TFIDFQuery.values()))
+            mag2 = self.magnitude(docVec)
             cosSim = dotProduct/(mag1 * mag2)
             rankedDocs.append({"id": doc, "cosSim": cosSim})
-            # stringMe = json.dumps(termDict)
-            # makeMePretty = json.loads(stringMe)
-            # f = open(DEFAULT_DEBUG_OUPUT_FILE, "w+")
-            # json.dump(makeMePretty, f)
-            # f.close()
-            # print(json.dumps(makeMePretty, indent = 4))
-        # stringMe = json.dumps(self.results)
-        # makeMePretty = json.loads
-        pprint.pprint(self.results)
-        # f = open(DEFAULT_DEBUG_OUPUT_FILE, "w+")
-        # json.dumps(pprint.pprint(self.results), f)
-        # f.close()
+        
+
+        # pprint.pprint(self.docResults)
         rankedDocs.sort(key=operator.itemgetter('cosSim'), reverse=True)
-        print(rankedDocs)
+        self.print(rankedDocs)
+        # print(rankedDocs)
 
+    def print(self, rankedDocs):
+        f = open(RESULTS_FILE, "a+")
+        for counter, doc in enumerate(rankedDocs):
+            stringToPrint = self.currentQuery + " Q0 " + doc["id"] + " "\
+            + str(counter + 1) + " " + str(doc["cosSim"]) + " Exp"
+            print(stringToPrint, file = f)
+        f.close()
 
-    
     def reset(self):
-        self.results = dict()
+        self.docResults = dict()
+        self.TFQuery = dict()
+        self.IDFStore = dict()
+        self.TFQuery = dict()
+        self.currentQuery = None
 
     def recordAndCompute(self, queryResult, term):
         if not queryResult:
@@ -101,38 +122,10 @@ class TrecTest:
             TF = self.computeTF(posting["termFreq"], relevantDocs[docId]["terms"])
             IDF = self.computeIDF(len(relevantDocs), size)
             TFIDF = self.computeTFIDF(TF, IDF)
-            if not (docId in self.results):
-                self.results[docId] = dict()
-            self.results[docId][term] = TFIDF
-        # for results in self.queryResultsByTerm:
-        #     #dict of dicts
-        #     docDict = dict()
-        #     for term in results:
-        #         if term == None:
-
-        #             continue
-        #         relevantDocs = term[1]
-        #         postings = term[0]["postings"]
-        #         size = term[2]
-        #         for docId, posting in postings.items():
-        #             TF = self.computeTF(posting["termFreq"], relevantDocs[docId]["terms"])
-        #             IDF = self.computeIDF(len(relevantDocs), size)
-        #             TFIDF = self.computeTFIDF(TF, IDF)
-        #             if not (docId in docDict):
-        #                 docDict[docId] = dict()
-        #                 # docDict[docId][]
-        #             # print(docId)
-        #             # print(TFIDF)
-        
-        # releventDocs = info[1]
-        # postings = info[0]["postings"]
-        # relevantDocs = info[1]
-        # size = info[2]
-        # for docId, posting in postings.items():
-        #     TF = self.computeTF(posting["termFreq"], relevantDocs[docId]["terms"])
-        #     IDF = self.computeIDF(len(relevantDocs), size)
-        #     TFIDF = self.computeTFIDF(TF, IDF)
-        pass
+            if not (docId in self.docResults):
+                self.docResults[docId] = dict()
+            self.docResults[docId][term] = TFIDF
+            self.IDFStore[term] = IDF
 
     @staticmethod
     def computeTF(termFreq, totTerms):
@@ -160,9 +153,15 @@ class TrecTest:
     @staticmethod
     def magnitude(vec1):
         return numpy.linalg.norm(vec1)
+    
+    def clearOutputFile(self):
+        f = open(RESULTS_FILE, "w+")
+        print("", file = f)
+        f.close()
 
 def main():
     handle = TrecTest()
+    handle.clearOutputFile();
     # handle.loadTrecFile()
     handle.iterateQueries()
     # handle.parseResults()
