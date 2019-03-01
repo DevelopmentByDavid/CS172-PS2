@@ -34,7 +34,11 @@ If needed, there is the ability to start with fresh psuedo-database files.
 
 Or simply delete the `./output` directory.
 
-To quit, enter `QUIT, Quit, quit,` or `q`
+### Perl Script
+````
+    ./data/trec_eval.pl -q ./data/qrels.txt ./output/results_file.txt > output.txt
+````
+
 
 ## DocIndex only options
 All DocIndex options  
