@@ -11,16 +11,12 @@ import pprint
 from operator import itemgetter, attrgetter, methodcaller
 import numpy
 import operator
-import pprint
 
 DEFAULT_TREC_FILE = os.path.join(os.path.dirname(__file__), "../data/ap89_collection")
 DEFAULT_QUERY_FILE = os.path.join(os.path.dirname(__file__), "../data/query_list.txt")
 DEFAULT_DEBUG_FILE = os.path.join(os.path.dirname(__file__), "../data/debug_list.txt")
 DEFAULT_DEBUG_OUPUT_FILE = os.path.join(os.path.dirname(__file__), "../output/debug.txt")
 RESULTS_FILE = os.path.join(os.path.dirname(__file__), "../output/results_file.txt")
-
-
-
 
 class TrecTest:
     def __init__(self):
@@ -53,10 +49,7 @@ class TrecTest:
         DocIndex.main(["--trec", DEFAULT_TREC_FILE])
     
     def iterateQueries(self):
-        # temp = []
-        # print(self.queries)
         for queryNum, query in self.queries.items():
-            print(queryNum)
             self.currentQuery = queryNum
             for term in query:
                 result = DocIndex.main(["--find", term])
@@ -89,12 +82,9 @@ class TrecTest:
             mag2 = self.magnitude(docVec)
             cosSim = dotProduct/(mag1 * mag2)
             rankedDocs.append({"id": doc, "cosSim": cosSim})
-        
 
-        # pprint.pprint(self.docResults)
         rankedDocs.sort(key=operator.itemgetter('cosSim'), reverse=True)
         self.print(rankedDocs)
-        # print(rankedDocs)
 
     def print(self, rankedDocs):
         f = open(RESULTS_FILE, "a+")
@@ -149,22 +139,20 @@ class TrecTest:
         cosSim = dotProduct/(mag1 * mag2)
         return cosSim
 
-    # vec1 and vec2 will be vectors of id's
     @staticmethod
     def magnitude(vec1):
         return numpy.linalg.norm(vec1)
     
     def clearOutputFile(self):
         f = open(RESULTS_FILE, "w+")
-        print("", file = f)
+        # print("", file = f)
         f.close()
 
 def main():
     handle = TrecTest()
     handle.clearOutputFile();
-    # handle.loadTrecFile()
+    handle.loadTrecFile()
     handle.iterateQueries()
-    # handle.parseResults()
 
 if __name__ == "__main__":
     # args = parser.parse_args() 
