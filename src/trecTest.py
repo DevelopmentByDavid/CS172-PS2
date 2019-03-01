@@ -33,7 +33,7 @@ class TrecTest:
             self.TFQuery[term] = 1
 
     def loadQueryFile(self):
-        f = open(DEFAULT_DEBUG_FILE, "r")
+        f = open(DEFAULT_QUERY_FILE, "r")
         lines = f.readlines()
         f.close()
         retVal = dict()
@@ -150,7 +150,7 @@ class TrecTest:
 
 def main():
     handle = TrecTest()
-    handle.clearOutputFile();
+    handle.clearOutputFile()
     handle.loadTrecFile()
     handle.iterateQueries()
 
